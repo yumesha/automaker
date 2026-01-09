@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -48,6 +48,14 @@ export function DeleteWorktreeDialog({
   const [deleteFeatures, setDeleteFeatures] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Reset checkbox state when dialog closes to prevent accidental data loss
+  useEffect(() => {
+    if (!open) {
+      setDeleteBranch(false);
+      setDeleteFeatures(false);
+    }
+  }, [open]);
+
   const handleDelete = async () => {
     if (!worktree) return;
 
@@ -67,9 +75,7 @@ export function DeleteWorktreeDialog({
             : `Branch "${worktree.branch}" was kept`,
         });
         onDeleted(worktree, deleteBranch, deleteFeatures);
-        onOpenChange(false);
-        setDeleteBranch(false);
-        setDeleteFeatures(false);
+        onOpenChange(false); // useEffect will reset checkbox state
       } else {
         toast.error('Failed to delete worktree', {
           description: result.error,
@@ -130,6 +136,7 @@ export function DeleteWorktreeDialog({
               id="delete-branch"
               checked={deleteBranch}
               onCheckedChange={(checked) => setDeleteBranch(checked === true)}
+              disabled={isLoading}
             />
             <Label htmlFor="delete-branch" className="text-sm cursor-pointer">
               Also delete the branch{' '}
@@ -143,6 +150,7 @@ export function DeleteWorktreeDialog({
                 id="delete-features"
                 checked={deleteFeatures}
                 onCheckedChange={(checked) => setDeleteFeatures(checked === true)}
+                disabled={isLoading}
               />
               <Label htmlFor="delete-features" className="text-sm cursor-pointer text-destructive">
                 Delete backlog of this worktree ({affectedFeatureCount} feature

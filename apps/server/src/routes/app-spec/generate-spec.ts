@@ -26,6 +26,7 @@ import { generateFeaturesFromSpec } from './generate-features-from-spec.js';
 import { ensureAutomakerDir, getAppSpecPath } from '@automaker/platform';
 import type { SettingsService } from '../../services/settings-service.js';
 import { getAutoLoadClaudeMdSetting } from '../../lib/settings-helpers.js';
+import { validateBranchName } from '@automaker/git-utils';
 
 const logger = createLogger('SpecRegeneration');
 
@@ -365,11 +366,14 @@ Your entire response should be valid JSON starting with { and ending with }. No 
   // Create worktree for target branch if specified and doesn't exist
   if (targetBranch && targetBranch !== 'main' && targetBranch !== 'master') {
     try {
+      // Validate branch name to prevent command injection
+      validateBranchName(targetBranch);
+
       logger.info(`Checking if worktree for branch '${targetBranch}' exists...`);
-      const { exec } = await import('child_process');
+      const { execFile } = await import('child_process');
       const { promisify } = await import('util');
       const fs = await import('fs');
-      const execAsync = promisify(exec);
+      const execFileAsync = promisify(execFile);
 
       // Check if worktree already exists
       const worktreePath = path.join(projectPath, '.worktrees', targetBranch);
@@ -381,7 +385,7 @@ Your entire response should be valid JSON starting with { and ending with }. No 
         // Check if branch exists
         let branchExists = false;
         try {
-          await execAsync(`git rev-parse --verify ${targetBranch}`, { cwd: projectPath });
+          await execFileAsync('git', ['rev-parse', '--verify', targetBranch], { cwd: projectPath });
           branchExists = true;
           logger.info(`Branch '${targetBranch}' already exists`);
         } catch {
@@ -396,26 +400,33 @@ Your entire response should be valid JSON starting with { and ending with }. No 
 
         // Create worktree
         logger.info(`Creating worktree for branch '${targetBranch}' at ${worktreePath}`);
-        let createCmd: string;
         if (branchExists) {
           // Use existing branch
-          createCmd = `git worktree add "${worktreePath}" ${targetBranch}`;
+          await execFileAsync('git', ['worktree', 'add', worktreePath, targetBranch], {
+            cwd: projectPath,
+          });
         } else {
           // Create new branch from HEAD
-          createCmd = `git worktree add -b ${targetBranch} "${worktreePath}" HEAD`;
+          await execFileAsync(
+            'git',
+            ['worktree', 'add', '-b', targetBranch, worktreePath, 'HEAD'],
+            {
+              cwd: projectPath,
+            }
+          );
         }
-
-        await execAsync(createCmd, { cwd: projectPath });
         logger.info(`✓ Created worktree for branch '${targetBranch}'`);
 
         // Track the branch so it persists in the UI
         try {
-          await execAsync(`git config branch.${targetBranch}.remote origin`, {
+          await execFileAsync('git', ['config', `branch.${targetBranch}.remote`, 'origin'], {
             cwd: projectPath,
           });
-          await execAsync(`git config branch.${targetBranch}.merge refs/heads/${targetBranch}`, {
-            cwd: projectPath,
-          });
+          await execFileAsync(
+            'git',
+            ['config', `branch.${targetBranch}.merge`, `refs/heads/${targetBranch}`],
+            { cwd: projectPath }
+          );
           logger.info(`✓ Configured tracking for branch '${targetBranch}'`);
         } catch (trackError) {
           logger.warn(`Failed to configure tracking for branch '${targetBranch}':`, trackError);

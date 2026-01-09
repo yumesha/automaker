@@ -1434,29 +1434,30 @@ export function BoardView() {
             ? hookFeatures.filter((f) => f.branchName === selectedWorktreeForAction.branch).length
             : 0
         }
-        onDeleted={(deletedWorktree, _deletedBranch, deleteFeatures) => {
+        onDeleted={async (deletedWorktree, _deletedBranch, deleteFeatures) => {
           // Handle features assigned to the deleted worktree (by branch)
           const featuresToHandle = hookFeatures.filter(
             (f) => f.branchName === deletedWorktree.branch
           );
 
-          featuresToHandle.forEach((feature) => {
-            if (deleteFeatures) {
-              // Remove from local state first to prevent update race conditions
-              removeFeature(feature.id);
-              // Then delete from disk
-              handleDeleteFeature(feature.id);
-            } else {
-              // Reassign feature to main branch
-              const mainBranch = worktrees.find((w) => w.isMain)?.branch || 'main';
-              const updates = {
-                branchName: mainBranch,
-              };
+          if (deleteFeatures) {
+            // Remove all features from state first to prevent update race conditions
+            featuresToHandle.forEach((feature) => removeFeature(feature.id));
+
+            // Delete all features from disk in parallel
+            await Promise.all(featuresToHandle.map((feature) => handleDeleteFeature(feature.id)));
+          } else {
+            // Reassign all features to main branch
+            const mainBranch = worktrees.find((w) => w.isMain)?.branch || 'main';
+            const updates = { branchName: mainBranch };
+
+            featuresToHandle.forEach((feature) => {
               updateFeature(feature.id, updates);
               persistFeatureUpdate(feature.id, updates);
-            }
-          });
+            });
+          }
 
+          // Refresh worktree list after all operations complete
           setWorktreeRefreshKey((k) => k + 1);
           setSelectedWorktreeForAction(null);
         }}
