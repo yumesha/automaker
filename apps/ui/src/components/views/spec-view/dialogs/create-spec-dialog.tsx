@@ -1,5 +1,5 @@
 import { Sparkles, Clock, Loader2 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -40,6 +40,16 @@ export function CreateSpecDialog({
 }: CreateSpecDialogProps) {
   const [customFeatureCount, setCustomFeatureCount] = useState<string>('');
   const [isCustom, setIsCustom] = useState(false);
+
+  // Sync local state with prop when dialog opens or featureCount changes
+  useEffect(() => {
+    if (open) {
+      const presetValues = [20, 50, 100];
+      const isPreset = presetValues.includes(featureCount as number);
+      setIsCustom(!isPreset);
+      setCustomFeatureCount(isPreset ? '' : String(featureCount));
+    }
+  }, [open, featureCount]);
 
   const selectedOption = FEATURE_COUNT_OPTIONS.find(
     (o) => o.value === featureCount || (isCustom && o.value === 'custom')
@@ -102,7 +112,7 @@ export function CreateSpecDialog({
                   <Input
                     type="text"
                     value={worktreeBranch}
-                    onChange={(e) => onWorktreeBranchChange(e.target.value)}
+                    onChange={(e) => onWorktreeBranchChange(e.target.value.trim())}
                     placeholder="e.g., test-worktree, feature-new"
                     disabled={isCreatingSpec}
                     className="font-mono text-sm"

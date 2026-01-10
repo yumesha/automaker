@@ -6,7 +6,7 @@
  * 2. Delete worktree with deleting features (features are removed)
  */
 
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
 import { exec } from 'child_process';
@@ -27,7 +27,7 @@ const execAsync = promisify(exec);
 const TEST_TEMP_DIR = createTempDirPath('delete-worktree-tests');
 
 // Helper to enable worktrees in settings
-async function enableWorktrees(page: any) {
+async function enableWorktrees(page: Page) {
   await page.click('[data-testid="settings-button"]');
   await page.waitForSelector('[data-testid="settings-view"]', { timeout: 5000 });
 
@@ -60,7 +60,7 @@ async function enableWorktrees(page: any) {
 }
 
 // Helper to create a worktree via the Create Worktree dialog
-async function createWorktree(page: any, branchName: string) {
+async function createWorktree(page: Page, branchName: string) {
   const createWorktreeButton = page.getByRole('button', { name: 'Create new worktree' });
   await createWorktreeButton.click();
   await page.waitForSelector('[role="dialog"]', { timeout: 5000 });

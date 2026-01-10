@@ -26,13 +26,6 @@ export async function setSpecEditorContent(page: Page, content: string): Promise
 }
 
 /**
- * Click the save spec button
- */
-export async function clickSaveSpec(page: Page): Promise<void> {
-  await clickElement(page, 'save-spec');
-}
-
-/**
  * Click the reload spec button
  */
 export async function clickReloadSpec(page: Page): Promise<void> {
